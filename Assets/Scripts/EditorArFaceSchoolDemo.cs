@@ -43,6 +43,13 @@ public sealed class EditorArFaceSchoolDemo : MonoBehaviour
 
     [SerializeField]
     int maxGeneratedFilters = 64;
+
+    [Header("Auto prefab import (Editor only)")]
+    [SerializeField]
+    bool autoIncludeAllPrefabFilters = true;
+
+    [SerializeField]
+    string prefabFiltersSearchFolder = "Assets/_BasicFaceFilter/Prefabs";
 #endif
 
     [SerializeField]
@@ -486,10 +493,35 @@ public sealed class EditorArFaceSchoolDemo : MonoBehaviour
 
         GameObject[] effectiveFilters = EffectiveFilterPrefabs();
 
-        // Merge with any generated filters (Editor only) when requested.
         List<GameObject> merged = new List<GameObject>(effectiveFilters);
 
 #if UNITY_EDITOR
+        if (autoIncludeAllPrefabFilters)
+        {
+            string[] guids = AssetDatabase.FindAssets("t:GameObject", new[] { prefabFiltersSearchFolder });
+            var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (GameObject prefab in effectiveFilters)
+            {
+                if (prefab == null)
+                    continue;
+                string assetPath = AssetDatabase.GetAssetPath(prefab);
+                if (!string.IsNullOrEmpty(assetPath))
+                    seenPaths.Add(assetPath);
+            }
+
+            foreach (string g in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(g);
+                if (seenPaths.Contains(path))
+                    continue;
+                GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null)
+                    continue;
+                merged.Add(prefab);
+                seenPaths.Add(path);
+            }
+        }
+
         if (autoIncludeAllTextures)
         {
             string[] guids = AssetDatabase.FindAssets("t:Texture2D", new[] { texturesSearchFolder });
